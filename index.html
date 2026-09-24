@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0f1115" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Attendance" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon.svg" />
 <title>Event Attendance — PACK ONE Launch 2026</title>
 <style>
   :root {
@@ -18,9 +26,19 @@
     --good-bg: rgba(52, 211, 153, 0.12);
     --warn: #fbbf24;
     --radius: 14px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
   }
 
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html {
+    height: 100%;
+    /* prevent iOS text-size adjustment on rotate */
+    -webkit-text-size-adjust: 100%;
+  }
 
   html, body {
     margin: 0;
@@ -29,23 +47,52 @@
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
+    min-height: 100%;
+    min-height: 100dvh;
+    overscroll-behavior-y: contain;
+  }
+
+  button, input {
+    font-family: inherit;
+    touch-action: manipulation;
+  }
+
+  button {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
 
   #app {
-    max-width: 880px;
+    max-width: 720px;
     margin: 0 auto;
-    padding: 24px 16px 80px;
+    padding-left: calc(14px + var(--safe-left));
+    padding-right: calc(14px + var(--safe-right));
+    padding-bottom: calc(110px + var(--safe-bottom));
   }
 
-  header.top {
+  /* Sticky compact header: title, live counts, search, filters all stay
+     visible while the (potentially long) attendee list scrolls beneath it. */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    padding-top: calc(14px + var(--safe-top));
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+
+  .topbar-row1 {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-bottom: 20px;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
   }
 
-  header.top h1 {
-    font-size: 22px;
+  .brand h1 {
+    font-size: clamp(18px, 5vw, 22px);
     margin: 0;
     font-weight: 700;
     letter-spacing: -0.01em;
@@ -53,56 +100,68 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+    line-height: 1.2;
   }
 
-  header.top p {
-    margin: 0;
+  .brand p {
+    margin: 2px 0 0;
     color: var(--text-dim);
-    font-size: 13px;
+    font-size: 12.5px;
   }
+
+  .icon-btn {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .icon-btn:active { background: var(--surface-2); }
 
   .stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin: 18px 0;
+    gap: 8px;
+    margin: 12px 0;
   }
 
   .stat {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 12px;
+    border-radius: 12px;
+    padding: 10px 6px;
     text-align: center;
+    min-width: 0;
   }
 
   .stat .num {
-    font-size: 24px;
+    font-size: clamp(18px, 5.5vw, 24px);
     font-weight: 700;
+    line-height: 1.1;
   }
 
   .stat .label {
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     color: var(--text-dim);
-    margin-top: 2px;
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .stat.checked-in .num { color: var(--good); }
 
-  .controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-
-  .search-wrap {
-    position: relative;
-    flex: 1;
-    min-width: 200px;
-  }
+  .search-wrap { margin-bottom: 8px; }
 
   input[type="text"], input[type="search"] {
     width: 100%;
@@ -110,68 +169,48 @@
     border: 1px solid var(--border);
     color: var(--text);
     border-radius: 10px;
-    padding: 11px 14px;
-    font-size: 14px;
+    padding: 12px 14px;
+    /* 16px minimum keeps iOS Safari from auto-zooming into the field */
+    font-size: 16px;
     outline: none;
     transition: border-color .15s ease;
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   input[type="text"]:focus, input[type="search"]:focus {
     border-color: var(--accent);
   }
 
-  .filter-btns {
+  .filter-chips {
     display: flex;
     gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .filter-chips::-webkit-scrollbar { display: none; }
+
+  .filter-chips button {
+    flex-shrink: 0;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 4px;
-  }
-
-  .filter-btns button {
-    background: transparent;
-    border: none;
     color: var(--text-dim);
-    padding: 7px 12px;
-    border-radius: 7px;
-    font-size: 13px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 13.5px;
     cursor: pointer;
     font-weight: 500;
+    min-height: 40px;
   }
 
-  .filter-btns button.active {
-    background: var(--surface-2);
-    color: var(--text);
-  }
-
-  .add-btn {
-    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  .filter-chips button.active {
+    background: var(--accent);
+    border-color: var(--accent);
     color: white;
-    border: none;
-    border-radius: 10px;
-    padding: 11px 18px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
   }
-
-  .add-btn:hover { filter: brightness(1.08); }
-
-  .admin-btn {
-    background: var(--surface-2);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 11px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .admin-btn:hover { background: var(--surface); }
 
   .list {
     display: flex;
@@ -183,20 +222,26 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 12px 14px;
+    padding: 12px 12px;
+    min-height: 60px;
     transition: border-color .15s ease, background .15s ease;
+    cursor: pointer;
   }
+
+  .row:active { background: var(--surface-2); }
 
   .row.checked-in {
     border-color: rgba(52, 211, 153, 0.35);
     background: var(--good-bg);
   }
 
-  .row .info { min-width: 0; }
+  .row.checked-in:active { background: rgba(52, 211, 153, 0.2); }
+
+  .row .info { min-width: 0; flex: 1; }
 
   .row .name {
     font-size: 15px;
@@ -212,6 +257,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-top: 1px;
   }
 
   .row .badge {
@@ -229,12 +275,14 @@
     border: 1px solid var(--border);
     background: var(--surface-2);
     color: var(--text);
-    border-radius: 9px;
-    padding: 9px 16px;
+    border-radius: 10px;
+    padding: 0 14px;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    min-width: 108px;
+    min-width: 100px;
+    min-height: 40px;
+    pointer-events: none; /* the whole row is the tap target */
     transition: all .15s ease;
   }
 
@@ -244,7 +292,7 @@
     border-color: var(--good);
   }
 
-  .check-btn:disabled { opacity: 0.6; cursor: wait; }
+  .check-btn:disabled { opacity: 0.6; }
 
   .empty {
     text-align: center;
@@ -258,6 +306,30 @@
     color: var(--text-dim);
     padding: 40px 20px;
   }
+
+  /* Floating action button: the primary "someone just walked in" action,
+     always reachable with a thumb regardless of scroll position. */
+  .fab {
+    position: fixed;
+    right: calc(18px + var(--safe-right));
+    bottom: calc(18px + var(--safe-bottom));
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(91, 140, 255, 0.45);
+    z-index: 30;
+  }
+
+  .fab:active { filter: brightness(0.95); transform: scale(0.96); }
 
   /* Modal */
   .modal-backdrop {
@@ -275,14 +347,16 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 20px;
+    padding: 18px;
+    padding-bottom: calc(18px + var(--safe-bottom));
     width: 100%;
     max-width: 380px;
+    max-height: 88vh;
+    overflow-y: auto;
   }
 
   .modal.wide {
     max-width: 520px;
-    max-height: 85vh;
     display: flex;
     flex-direction: column;
   }
@@ -292,37 +366,49 @@
     font-size: 17px;
   }
 
-  .admin-add-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+  /* On phones, modals dock to the bottom edge as a sheet: easier to reach
+     one-handed than a centered dialog, and avoids the on-screen keyboard
+     covering the confirm button. */
+  @media (max-width: 640px) {
+    .modal-backdrop { align-items: flex-end; padding: 0; }
+    .modal, .modal.wide {
+      max-width: 100%;
+      width: 100%;
+      border-radius: 18px 18px 0 0;
+      max-height: 90vh;
+    }
   }
 
-  .admin-add-row input {
-    flex: 1;
-    min-width: 120px;
+  .admin-add-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
+
+  .admin-add-row input { width: 100%; }
 
   .admin-add-row button {
     background: linear-gradient(90deg, var(--accent), var(--accent-2));
     color: white;
     border: none;
-    border-radius: 9px;
-    padding: 0 16px;
-    font-size: 13px;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+    min-height: 46px;
   }
 
   .admin-add-row button:disabled { opacity: 0.6; cursor: wait; }
 
   .admin-list {
-    margin-top: 16px;
+    margin-top: 14px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 6px;
     padding-right: 2px;
+    max-height: 40vh;
   }
 
   .admin-row {
@@ -333,7 +419,7 @@
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 9px;
-    padding: 8px 10px;
+    padding: 9px 10px;
   }
 
   .admin-row .info { min-width: 0; }
@@ -360,13 +446,14 @@
     border: 1px solid rgba(239, 68, 68, 0.4);
     color: #fca5a5;
     border-radius: 8px;
-    padding: 6px 11px;
-    font-size: 12px;
+    padding: 8px 12px;
+    font-size: 12.5px;
     font-weight: 600;
     cursor: pointer;
+    min-height: 36px;
   }
 
-  .delete-btn:hover { background: rgba(239, 68, 68, 0.12); }
+  .delete-btn:active { background: rgba(239, 68, 68, 0.12); }
   .delete-btn:disabled { opacity: 0.5; cursor: wait; }
 
   .modal label {
@@ -380,16 +467,21 @@
     display: flex;
     gap: 8px;
     margin-top: 18px;
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+    padding-top: 4px;
   }
 
   .modal-actions button {
     flex: 1;
-    padding: 10px;
-    border-radius: 9px;
+    padding: 13px 10px;
+    border-radius: 10px;
     border: 1px solid var(--border);
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
+    min-height: 48px;
   }
 
   .modal-actions .cancel {
@@ -405,7 +497,7 @@
 
   .toast {
     position: fixed;
-    bottom: 24px;
+    bottom: calc(90px + var(--safe-bottom));
     left: 50%;
     transform: translateX(-50%);
     background: var(--surface-2);
@@ -416,6 +508,8 @@
     font-size: 13.5px;
     z-index: 60;
     box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    max-width: calc(100vw - 32px);
+    text-align: center;
   }
 
   .error-banner {
@@ -439,45 +533,49 @@
 </head>
 <body>
 <div id="app">
-  <header class="top">
-    <h1>Event Attendance</h1>
-    <p>PACK ONE — Launch 2026</p>
-  </header>
-
-  <div id="config-error"></div>
-
-  <div class="stats">
-    <div class="stat">
-      <div class="num" id="stat-total">0</div>
-      <div class="label">Registered</div>
+  <div class="topbar">
+    <div class="topbar-row1">
+      <div class="brand">
+        <h1>Event Attendance</h1>
+        <p>PACK ONE — Launch 2026</p>
+      </div>
+      <button class="icon-btn" id="open-admin" aria-label="Manage attendees">⚙</button>
     </div>
-    <div class="stat checked-in">
-      <div class="num" id="stat-checked">0</div>
-      <div class="label">Checked in</div>
-    </div>
-    <div class="stat">
-      <div class="num" id="stat-remaining">0</div>
-      <div class="label">Remaining</div>
-    </div>
-  </div>
 
-  <div class="controls">
+    <div id="config-error"></div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="num" id="stat-total">0</div>
+        <div class="label">Registered</div>
+      </div>
+      <div class="stat checked-in">
+        <div class="num" id="stat-checked">0</div>
+        <div class="label">Checked in</div>
+      </div>
+      <div class="stat">
+        <div class="num" id="stat-remaining">0</div>
+        <div class="label">Remaining</div>
+      </div>
+    </div>
+
     <div class="search-wrap">
-      <input type="search" id="search" placeholder="Search by name or company…" autocomplete="off" />
+      <input type="search" id="search" placeholder="Search by name or company…" autocomplete="off" enterkeyhint="search" />
     </div>
-    <div class="filter-btns">
+
+    <div class="filter-chips">
       <button data-filter="all" class="active">All</button>
       <button data-filter="pending">Pending</button>
       <button data-filter="checked">Checked in</button>
     </div>
-    <button class="admin-btn" id="open-admin">⚙ Admin</button>
-    <button class="add-btn" id="open-add">+ Add walk-in</button>
   </div>
 
   <div id="list" class="list">
     <div class="loading">Loading attendee list…</div>
   </div>
 </div>
+
+<button class="fab" id="open-add" aria-label="Add walk-in attendee">+</button>
 
 <div id="modal-root"></div>
 
@@ -501,7 +599,7 @@
   const statTotal = document.getElementById('stat-total');
   const statChecked = document.getElementById('stat-checked');
   const statRemaining = document.getElementById('stat-remaining');
-  const filterBtns = document.querySelectorAll('.filter-btns button');
+  const filterBtns = document.querySelectorAll('.filter-chips button');
   const openAddBtn = document.getElementById('open-add');
   const openAdminBtn = document.getElementById('open-admin');
   const modalRoot = document.getElementById('modal-root');
@@ -565,23 +663,27 @@
     }
 
     listEl.innerHTML = filtered.map(p => `
-      <div class="row ${p.checked_in ? 'checked-in' : ''}" data-id="${p.id}">
+      <div class="row ${p.checked_in ? 'checked-in' : ''}" data-id="${p.id}" data-state="${p.checked_in ? '1' : '0'}">
         <div class="info">
           <div class="name">${escapeHtml(p.name)}${p.is_walk_in ? '<span class="badge">walk-in</span>' : ''}</div>
           <div class="company">${escapeHtml(p.company || '')}</div>
         </div>
-        <button class="check-btn ${p.checked_in ? 'done' : ''}" data-id="${p.id}" data-state="${p.checked_in ? '1' : '0'}">
+        <button class="check-btn ${p.checked_in ? 'done' : ''}" tabindex="-1">
           ${p.checked_in ? '✓ Checked in' : 'Check in'}
         </button>
       </div>
     `).join('');
   }
 
+  // The entire row is the tap target (not just the small button), so it's
+  // easy to hit one-handed on a phone while scrolling a long list.
   listEl.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.check-btn');
-    if (!btn) return;
-    const id = btn.dataset.id;
-    const currentlyChecked = btn.dataset.state === '1';
+    const row = e.target.closest('.row');
+    if (!row) return;
+    const id = row.dataset.id;
+    const btn = row.querySelector('.check-btn');
+    const currentlyChecked = row.dataset.state === '1';
+    if (btn.disabled) return;
     btn.disabled = true;
 
     const newState = !currentlyChecked;
@@ -627,9 +729,9 @@
         <div class="modal">
           <h2>Add walk-in attendee</h2>
           <label for="new-name">Full name</label>
-          <input type="text" id="new-name" placeholder="e.g. Sara Amrani" autocomplete="off" />
+          <input type="text" id="new-name" placeholder="e.g. Sara Amrani" autocomplete="off" enterkeyhint="next" />
           <label for="new-company">Company (optional)</label>
-          <input type="text" id="new-company" placeholder="e.g. Green Berry Export" autocomplete="off" />
+          <input type="text" id="new-company" placeholder="e.g. Green Berry Export" autocomplete="off" enterkeyhint="done" />
           <div class="modal-actions">
             <button class="cancel" id="cancel-add">Cancel</button>
             <button class="confirm" id="confirm-add">Add & check in</button>
@@ -717,12 +819,12 @@
         <div class="modal wide">
           <h2>Manage attendees</h2>
           <div class="admin-add-row">
-            <input type="text" id="admin-new-name" placeholder="Full name" autocomplete="off" />
-            <input type="text" id="admin-new-company" placeholder="Company (optional)" autocomplete="off" />
+            <input type="text" id="admin-new-name" placeholder="Full name" autocomplete="off" enterkeyhint="next" />
+            <input type="text" id="admin-new-company" placeholder="Company (optional)" autocomplete="off" enterkeyhint="done" />
             <button id="admin-confirm-add">Add attendee</button>
           </div>
           <label for="admin-search" style="margin-top:14px;">Search existing attendees</label>
-          <input type="search" id="admin-search" placeholder="Search by name or company…" autocomplete="off" />
+          <input type="search" id="admin-search" placeholder="Search by name or company…" autocomplete="off" enterkeyhint="search" />
           <div class="admin-list" id="admin-list"></div>
           <div class="modal-actions">
             <button class="cancel" id="close-admin">Close</button>
