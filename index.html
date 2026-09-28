@@ -126,6 +126,12 @@
 
   .icon-btn:active { background: var(--surface-2); }
 
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   .stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -539,7 +545,10 @@
         <h1>Event Attendance</h1>
         <p>PACK ONE — Launch 2026</p>
       </div>
-      <button class="icon-btn" id="open-admin" aria-label="Manage attendees">⚙</button>
+      <div class="header-actions">
+        <button class="icon-btn" id="export-excel" aria-label="Download as Excel">⬇</button>
+        <button class="icon-btn" id="open-admin" aria-label="Manage attendees">⚙</button>
+      </div>
     </div>
 
     <div id="config-error"></div>
@@ -581,6 +590,7 @@
 
 <script type="module">
   import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+  import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
 
   const SUPABASE_URL = 'https://myjwzrgujrjdeytzkvhf.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_pZWc1olk9-6jCRP0XnV2qw_upR7F8gP';
@@ -602,6 +612,7 @@
   const filterBtns = document.querySelectorAll('.filter-chips button');
   const openAddBtn = document.getElementById('open-add');
   const openAdminBtn = document.getElementById('open-admin');
+  const exportBtn = document.getElementById('export-excel');
   const modalRoot = document.getElementById('modal-root');
 
   let people = [];
@@ -937,6 +948,34 @@
   }
 
   openAdminBtn.addEventListener('click', openAdminModal);
+
+  function exportToExcel() {
+    if (!people.length) {
+      showToast('No attendees to export yet');
+      return;
+    }
+
+    const rows = [...people]
+      .sort((a, b) => (a.company || '').localeCompare(b.company || '') || a.name.localeCompare(b.name))
+      .map(p => ({
+        'Company': p.company || '',
+        'Name': p.name,
+        'Type': p.is_walk_in ? 'Walk-in' : 'Registered',
+        'Checked in': p.checked_in ? 'Yes' : 'No',
+        'Checked in at': p.checked_in_at ? new Date(p.checked_in_at).toLocaleString() : ''
+      }));
+
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    sheet['!cols'] = [{ wch: 32 }, { wch: 26 }, { wch: 12 }, { wch: 11 }, { wch: 20 }];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Attendance');
+
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    XLSX.writeFile(workbook, `attendance-pack-one-${stamp}.xlsx`);
+  }
+
+  exportBtn.addEventListener('click', exportToExcel);
 
   // Live sync across devices at the same event
   if (supabase) {
